@@ -1,8 +1,9 @@
 package com.example.dynamic_datasource.config;
 
 import com.google.common.collect.Maps;
-import com.zaxxer.hikari.HikariDataSource;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 import org.springframework.stereotype.Component;
 
@@ -13,8 +14,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 
+@Slf4j
 @RequiredArgsConstructor
-@Component
+@Component("dynamicDataSource")
 public class DynamicDataSource extends AbstractRoutingDataSource {
 
     private final DataSource dataSource;
@@ -32,15 +34,18 @@ public class DynamicDataSource extends AbstractRoutingDataSource {
             PreparedStatement ps = connection.prepareStatement("select * from db_config");
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                HikariDataSource dataSource = new HikariDataSource();
-                dataSource.setJdbcUrl(rs.getString(3));
-                dataSource.setUsername(rs.getString(4));
-                dataSource.setPassword(rs.getString(5));
-                dataSource.setDriverClassName(rs.getString(6));
+                DataSource dataSource = DataSourceBuilder.create()
+                        .url(rs.getString(3))
+                        .username(rs.getString(4))
+                        .password(rs.getString(5))
+                        .driverClassName(rs.getString(6))
+                        .build();
                 targetDataSources.put(String.valueOf(rs.getString(2)), dataSource);
             }
+            targetDataSources.put("default", dataSource);
         } catch (SQLException e) {
             e.printStackTrace();
+            log.error("从默认数据库加载租户数据库配置异常");
         }
         super.setTargetDataSources(targetDataSources);
 
@@ -49,4 +54,5 @@ public class DynamicDataSource extends AbstractRoutingDataSource {
 
         super.afterPropertiesSet();
     }
+
 }

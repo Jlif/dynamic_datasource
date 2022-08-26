@@ -26,7 +26,7 @@ public class BizController {
 
     @GetMapping("/list")
     public List<Biz> list() {
-        return bizService.list();
+        return bizService.listBiz();
     }
 
 }
