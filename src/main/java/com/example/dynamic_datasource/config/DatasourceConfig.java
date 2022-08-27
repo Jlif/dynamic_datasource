@@ -1,8 +1,11 @@
 package com.example.dynamic_datasource.config;
 
+import com.baomidou.mybatisplus.annotation.DbType;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.mybatis.spring.SqlSessionFactoryBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
@@ -29,8 +32,10 @@ public class DatasourceConfig {
     @Primary
     @Bean("sqlSessionFactory")
     public SqlSessionFactory getSqlSessionFactory(@Qualifier("dynamicDataSource") DynamicDataSource dynamicDataSource) throws Exception {
-        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
+        //使用 MybatisSqlSessionFactoryBean 替换 SqlSessionFactoryBean，才能使用 BaseMapper
+        MybatisSqlSessionFactoryBean sqlSessionFactoryBean = new MybatisSqlSessionFactoryBean();
         sqlSessionFactoryBean.setDataSource(dynamicDataSource);
+        sqlSessionFactoryBean.setPlugins(mybatisPlusInterceptor());
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         // 指向默认的 xml 文件
         sqlSessionFactoryBean.setMapperLocations(resolver.getResources("classpath*:mapper/**/*.xml"));
@@ -39,9 +44,16 @@ public class DatasourceConfig {
     }
 
     @Primary
-    @Bean(value = "transactionManager")
+    @Bean("transactionManager")
     public PlatformTransactionManager dynamicTransactionManager(@Qualifier("dynamicDataSource") DynamicDataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
+    }
+
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        return interceptor;
     }
 
 }

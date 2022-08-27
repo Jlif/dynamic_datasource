@@ -31,7 +31,7 @@ public class MybatisPlusGenerator {
                     builder.entityBuilder().enableLombok().enableFileOverride();
                     builder.mapperBuilder().enableFileOverride();
                     builder.serviceBuilder().formatServiceFileName("%sService").enableFileOverride(); // 设置生成的service接口文件名称的规则
-                    builder.controllerBuilder().enableFileOverride();
+//                    builder.controllerBuilder().enableFileOverride();
                 })
                 .templateEngine(new FreemarkerTemplateEngine()) // 使用Freemarker引擎模板，默认的是Velocity引擎模板
                 .execute();

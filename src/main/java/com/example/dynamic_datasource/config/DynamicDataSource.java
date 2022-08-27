@@ -29,7 +29,16 @@ public class DynamicDataSource extends AbstractRoutingDataSource {
     @Override
     public void afterPropertiesSet() {
         //为 targetDataSources 设置数据源集合
-        Map<Object, Object> targetDataSources = Maps.newHashMap();
+        super.setTargetDataSources(getAllDataSourceFromDb());
+
+        //为 defaultTargetDataSource 设置默认数据源
+        super.setDefaultTargetDataSource(dataSource);
+
+        super.afterPropertiesSet();
+    }
+
+    private Map<Object, Object> getAllDataSourceFromDb() {
+        Map<Object, Object> targetDataSources = Maps.newHashMapWithExpectedSize(16);
         try (Connection connection = dataSource.getConnection()) {
             PreparedStatement ps = connection.prepareStatement("select * from db_config");
             ResultSet rs = ps.executeQuery();
@@ -44,15 +53,9 @@ public class DynamicDataSource extends AbstractRoutingDataSource {
             }
             targetDataSources.put("default", dataSource);
         } catch (SQLException e) {
-            e.printStackTrace();
-            log.error("从默认数据库加载租户数据库配置异常");
+            throw new RuntimeException("从默认数据库加载租户数据库配置异常");
         }
-        super.setTargetDataSources(targetDataSources);
-
-        //为 defaultTargetDataSource 设置默认数据源
-        super.setDefaultTargetDataSource(dataSource);
-
-        super.afterPropertiesSet();
+        return targetDataSources;
     }
 
 }
