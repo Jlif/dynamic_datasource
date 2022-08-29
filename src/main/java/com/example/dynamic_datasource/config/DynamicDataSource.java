@@ -1,17 +1,21 @@
 package com.example.dynamic_datasource.config;
 
+import com.example.dynamic_datasource.entity.DbConfig;
 import com.google.common.collect.Maps;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -19,6 +23,7 @@ import java.util.Map;
 @Component("dynamicDataSource")
 public class DynamicDataSource extends AbstractRoutingDataSource {
 
+    private final JdbcTemplate jdbcTemplate;
     private final DataSource dataSource;
 
     @Override
@@ -39,23 +44,36 @@ public class DynamicDataSource extends AbstractRoutingDataSource {
 
     private Map<Object, Object> getAllDataSourceFromDb() {
         Map<Object, Object> targetDataSources = Maps.newHashMapWithExpectedSize(16);
-        try (Connection connection = dataSource.getConnection()) {
-            PreparedStatement ps = connection.prepareStatement("select * from db_config");
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
+
+        List<DbConfig> configList = jdbcTemplate.query("select * from db_config", new DbConfigRowMapper());
+        if (!CollectionUtils.isEmpty(configList)) {
+            configList.forEach(config -> {
                 DataSource dataSource = DataSourceBuilder.create()
-                        .url(rs.getString(3))
-                        .username(rs.getString(4))
-                        .password(rs.getString(5))
-                        .driverClassName(rs.getString(6))
+                        .url(config.getUrl())
+                        .username(config.getUser())
+                        .password(config.getPwd())
+                        .driverClassName(config.getDriver())
                         .build();
-                targetDataSources.put(String.valueOf(rs.getString(2)), dataSource);
-            }
-            targetDataSources.put("default", dataSource);
-        } catch (SQLException e) {
-            throw new RuntimeException("从默认数据库加载租户数据库配置异常");
+                targetDataSources.put(String.valueOf(config.getParkId()), dataSource);
+            });
         }
+        targetDataSources.put("default", dataSource);
         return targetDataSources;
+    }
+
+    private static class DbConfigRowMapper implements RowMapper<DbConfig> {
+        @Override
+        public DbConfig mapRow(ResultSet rs, int rowNum) throws SQLException {
+            DbConfig dbConfig = new DbConfig();
+            dbConfig.setId(rs.getInt("id"));
+            dbConfig.setParkId(rs.getLong("park_id"));
+            dbConfig.setUrl(rs.getString("url"));
+            dbConfig.setUser(rs.getString("user"));
+            dbConfig.setPwd(rs.getString("pwd"));
+            dbConfig.setDriver(rs.getString("driver"));
+            dbConfig.setCreateTime(rs.getTimestamp("create_time").toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+            return dbConfig;
+        }
     }
 
 }

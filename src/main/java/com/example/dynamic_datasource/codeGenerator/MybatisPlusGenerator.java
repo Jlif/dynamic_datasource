@@ -27,7 +27,7 @@ public class MybatisPlusGenerator {
                             .pathInfo(Collections.singletonMap(OutputFile.xml, parentProjectDir + "/src/main/resources/mapper")); // 设置mapperXml生成路径
                 })
                 .strategyConfig(builder -> {
-                    builder.addInclude(Lists.newArrayList("biz")); // 设置需要生成的表名
+                    builder.addInclude(Lists.newArrayList("db_config")); // 设置需要生成的表名
                     builder.entityBuilder().enableLombok().enableFileOverride();
                     builder.mapperBuilder().enableFileOverride();
                     builder.serviceBuilder().formatServiceFileName("%sService").enableFileOverride(); // 设置生成的service接口文件名称的规则

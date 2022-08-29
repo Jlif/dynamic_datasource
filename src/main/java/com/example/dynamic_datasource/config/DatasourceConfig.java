@@ -11,8 +11,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -22,16 +22,14 @@ import javax.sql.DataSource;
 @Configuration
 public class DatasourceConfig {
 
-    @Primary
-    @Bean("primaryDataSource")
+    @Bean("defaultDataSource")
     @ConfigurationProperties(prefix = "spring.datasource")
     public DataSource defaultDataSource() {
         return DataSourceBuilder.create().build();
     }
 
-    @Primary
-    @Bean("sqlSessionFactory")
-    public SqlSessionFactory getSqlSessionFactory(@Qualifier("dynamicDataSource") DynamicDataSource dynamicDataSource) throws Exception {
+    @Bean("dynamicSqlSessionFactory")
+    public SqlSessionFactory dynamicSqlSessionFactory(@Qualifier("dynamicDataSource") DynamicDataSource dynamicDataSource) throws Exception {
         //使用 MybatisSqlSessionFactoryBean 替换 SqlSessionFactoryBean，才能使用 BaseMapper
         MybatisSqlSessionFactoryBean sqlSessionFactoryBean = new MybatisSqlSessionFactoryBean();
         sqlSessionFactoryBean.setDataSource(dynamicDataSource);
@@ -43,17 +41,21 @@ public class DatasourceConfig {
         return sqlSessionFactoryBean.getObject();
     }
 
-    @Primary
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        return interceptor;
+    }
+
     @Bean("transactionManager")
     public PlatformTransactionManager dynamicTransactionManager(@Qualifier("dynamicDataSource") DynamicDataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
     }
 
     @Bean
-    public MybatisPlusInterceptor mybatisPlusInterceptor() {
-        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
-        return interceptor;
+    public JdbcTemplate jdbcTemplate() {
+        return new JdbcTemplate(defaultDataSource());
     }
 
 }
